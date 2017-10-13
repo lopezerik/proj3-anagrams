@@ -6,6 +6,7 @@ from a scrambled string)
 
 import flask
 import logging
+import time
 
 # Our own modules
 from letterbag import LetterBag
@@ -45,95 +46,70 @@ def index():
     flask.session["jumble"] = jumbled(
         flask.g.vocab, flask.session["target_count"])
     flask.session["matches"] = []
+    flask.session["used"] = []
     app.logger.debug("Session variables have been set")
     assert flask.session["matches"] == []
     assert flask.session["target_count"] > 0
     app.logger.debug("At least one seems to be set correctly")
     return flask.render_template('vocab.html')
 
-
-@app.route("/keep_going")
-def keep_going():
-    """
-    After initial use of index, we keep the same scrambled
-    word and try to get more matches
-    """
-    flask.g.vocab = WORDS.as_list()
-    return flask.render_template('vocab.html')
-
-
 @app.route("/success")
 def success():
     return flask.render_template('success.html')
-
-#######################
-# Form handler.
-# CIS 322 note:
-#   You'll need to change this to a
-#   a JSON request handler
-#######################
-
-
-@app.route("/_check", methods=["POST"])
-def check():
-    """
-    User has submitted the form with a word ('attempt')
-    that should be formed from the jumble and on the
-    vocabulary list.  We respond depending on whether
-    the word is on the vocab list (therefore correctly spelled),
-    made only from the jumble letters, and not a word they
-    already found.
-    """
-    app.logger.debug("Entering check")
-
-    # The data we need, from form and from cookie
-    text = flask.request.form["attempt"]
-    jumble = flask.session["jumble"]
-    matches = flask.session.get("matches", [])  # Default to empty list
-
-    # Is it good?
-    in_jumble = LetterBag(jumble).contains(text)
-    matched = WORDS.has(text)
-
-    # Respond appropriately
-    if matched and in_jumble and not (text in matches):
-        # Cool, they found a new word
-        matches.append(text)
-        flask.session["matches"] = matches
-    elif text in matches:
-        flask.flash("You already found {}".format(text))
-    elif not matched:
-        flask.flash("{} isn't in the list of words".format(text))
-    elif not in_jumble:
-        flask.flash(
-            '"{}" can\'t be made from the letters {}'.format(text, jumble))
-    else:
-        app.logger.debug("This case shouldn't happen!")
-        assert False  # Raises AssertionError
-
-    # Choose page:  Solved enough, or keep going?
-    if len(matches) >= flask.session["target_count"]:
-       return flask.redirect(flask.url_for("success"))
-    else:
-       return flask.redirect(flask.url_for("keep_going"))
 
 ###############
 # AJAX request handlers
 #   These return JSON, rather than rendering pages.
 ###############
 
+prior_value = ""
+@app.route("/_clearOnReload")
+def clearOnReload():
+    global prior_value
+    prior_value = ""
 
-@app.route("/_example")
-def example():
-    """
-    Example ajax request handler
-    """
-    app.logger.debug("Got a JSON request")
-    rslt = {"key": "value"}
-    return flask.jsonify(result=rslt)
+@app.route("/_ajaxCheck")
+def ajaxCheck():
+    '''
+    Checks if the user has entered a valid word or not
+    '''
+    app.logger.debug("Entering ajaxCheck")
+    entry = flask.request.args.get("entry", type=str)
+    jumble = flask.session["jumble"]
+    matches = flask.session.get("matches", [])
+    #app.logger.debug(matches)
+    
+    # make sure entry is from jumble letters and dictionary
+    in_jumble = LetterBag(jumble).contains(entry)
+    matched = WORDS.has(entry)
+    
+    # check if we've tried this before
+    global prior_value
+    if(entry == prior_value): 
+        result = {"valid_word": "False"}
+        return flask.jsonify(check=result)
+    prior_value = entry
+    # response logic
+    if matched and in_jumble and not(entry in matches):
+        # entry was in dictionary, from jumbled letters, and not a duplicate entry
+        #app.logger.debug("appended matches = ")
 
+        matches.append(entry)
 
-#################
+        flask.session["mathces"] = matches
+        if( len(matches) >= flask.session["target_count"]):
+            # reached target
+            success_url = flask.url_for("success")
+            result = {"valid_word": success_url}
+            return flask.jsonify(check=result)
+        else:
+            result = {"valid_word": "True"}
+            return flask.jsonify(check=result)
+    else:
+        result = {"valid_word": "False"}
+        return flask.jsonify(check=result)
+
+################
 # Functions used within the templates
 #################
 

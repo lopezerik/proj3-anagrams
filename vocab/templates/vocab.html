@@ -80,36 +80,58 @@
 <br />
 <div class="row">
   <div class="col-xs-6 text-center">
-  <form id="entry" method="POST" action="/_check">
+  <!-- new code starts here -->
+  <form id="entry">
     <label for="attempt">Word:</label>
     <input id="attempt" name="attempt" type="text" width="15"
       autocomplete="off"  autofocus />
-    <input type="submit" name="try" />
   </form>
 </div></div>
 
+<p id="response"> </p> <!-- For adding on screen text -->
+
+<!-- JQuery and Ajax ahead -->
+<script>
+
+// Disables hitting enter as a submit option.
+$("#entry").submit(function(event){
+    event.preventDefault();
+});
+
+// Detects and processes keystrokes, sends them to be handled by our py file.
+$("#attempt").keyup(function(event){
+    console.log(event);
+    var input = $("#attempt").val();  // Textbox input.
+    var keycode = event.which;        // Key that was hit.
+    var letter = String.fromCharCode(keycode);  // Creates string from unicode.
+   
+    // Need to check to make sure keycode was a letter not a different key.
+    // Compare it against alphabet.
+    if( !("ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(letter)) ){ return } 
+
+    // Test for page reload
+    if(window.performance == 1){
+        $.getJSON("/_clearOnReload")
+    }
+
+    // keycode was a letter so keep going.
+    $.getJSON("/_ajaxCheck", {entry: input},
+        function(data){
+            response = data.check.valid_word;  // Store value returned from py file here.
+ 
+            if(response == "True"){
+                $("#attempt").val("");    // Clear the attempt bar for the user.
+                console.log($("#response").get());
+                $("#response").append(input + " ");    // Add it to our list of found words.
+            } else if(response != "False"){
+                // reached target number, display success page
+                window.location.replace(response);
+            }
+        }
+    );
+});
+
+</script>
 <br />
-
-{% if session.matches|length is not equalto 0  %}
-<h2>You found </h2>
-<p id="results">
-  {% for match in session.matches %}
-  {{ match }} 
-  {% endfor %}
-</p>
-{% endif %}
-
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <!-- Mismatch, already found, etc. "flashed" from Python -->
-    {% for message in messages %}
-      <p class="message">{{ message }}</p>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
-
-
  </div> <!-- container -->
 </body> </html>
