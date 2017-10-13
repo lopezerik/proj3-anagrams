@@ -47,6 +47,8 @@ def test_simple_merge():
     assert bag_abbc.as_string() == "abbccd"
 
 
-def test_with_space():
-    bag_ab_space_c = LetterBag("ab c")
-    assert bag_bag_ab_space_c.as_string() = "abc"
+def test_self_merge():
+    bag_ab = LetterBag("ab")
+    bag_ab2 = LetterBag("ab")
+    bag_ab.merge(bag_ab2)
+    assert bag_ab.as_string() == "ab"

@@ -36,6 +36,6 @@ def test_jumbled_more():
 
 
 def test_jumbled_caps():
-    assert same(jumbled(["A", "a"], 2), "a")
+    assert not same(jumbled(["A", "a"], 2), "a")
 
 
