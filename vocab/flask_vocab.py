@@ -6,7 +6,6 @@ from a scrambled string)
 
 import flask
 import logging
-import time
 
 # Our own modules
 from letterbag import LetterBag
@@ -46,7 +45,6 @@ def index():
     flask.session["jumble"] = jumbled(
         flask.g.vocab, flask.session["target_count"])
     flask.session["matches"] = []
-    flask.session["used"] = []
     app.logger.debug("Session variables have been set")
     assert flask.session["matches"] == []
     assert flask.session["target_count"] > 0
@@ -77,7 +75,6 @@ def ajaxCheck():
     entry = flask.request.args.get("entry", type=str)
     jumble = flask.session["jumble"]
     matches = flask.session.get("matches", [])
-    #app.logger.debug(matches)
     
     # make sure entry is from jumble letters and dictionary
     in_jumble = LetterBag(jumble).contains(entry)
@@ -92,8 +89,6 @@ def ajaxCheck():
     # response logic
     if matched and in_jumble and not(entry in matches):
         # entry was in dictionary, from jumbled letters, and not a duplicate entry
-        #app.logger.debug("appended matches = ")
-
         matches.append(entry)
 
         flask.session["mathces"] = matches
@@ -153,4 +148,4 @@ if __name__ == "__main__":
         app.logger.setLevel(logging.DEBUG)
         app.logger.info(
             "Opening for global access on port {}".format(CONFIG.PORT))
-        app.run(port=CONFIG.PORT, host="0.0.0.0")
+    app.run(port=CONFIG.PORT, host="0.0.0.0")
